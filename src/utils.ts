@@ -1,5 +1,7 @@
 import * as core from '@actions/core'
 import * as context from './context'
+import * as path from 'path'
+import * as fs from 'fs-extra'
 
 //高危命令列表，持续完善
 const dangerCommandSet: string[] = [
@@ -26,6 +28,10 @@ export function checkInputs(inputs: context.Inputs): boolean {
     checkObejectIsNull(inputs.operation_type)
   ) {
     core.info('Please fill all the required parameters')
+    return false
+  }
+  if(inputs.operation_type != "upload" && inputs.operation_type != "download" ){
+    core.info('operation_type must be upload or download')
     return false
   }
 
@@ -101,4 +107,58 @@ export function checkCommandDanger(command: string): boolean {
   }
   i
   return isCommandDanger
+}
+
+/**
+ * 按空格将切分本地和远端文件路径
+ * @param scpCommand 
+ * @returns 
+ */
+export function splitScpCommand(scpCommand:string): string[]{
+  const fileArray:string[] = scpCommand.split(" ");
+  return fileArray;
+}
+
+/**
+ * 检查文件是否以file或者dir开头
+ * @param scpCommand 
+ * @returns 
+ */
+export function checkScpCommandStart(scpCommand:string): boolean{
+  if(scpCommand.startsWith("file") || scpCommand.startsWith("dir")){
+    return true;
+  }
+  return false
+}
+
+/**
+ * 检查数组是否包含三个元素
+ * @param scpCommand 
+ * @returns 
+ */
+export function checkScpCommandLength(scpCommand:string[]): boolean{
+  if(scpCommand.length === 3){
+    return true;
+  }
+  return false;
+}
+
+
+export function checkLocalFileOrDirExist(opsType:string,path:string[]) : boolean{
+  let checkPath:string = "";
+  if(opsType === "upload"){
+    checkPath = path[1];
+  }
+  if(opsType === "download"){
+    checkPath = path[12];
+  }
+  core.info("check local file " + checkPath + " exist");
+  try {
+    const stat = fs.statSync(checkPath);
+    console.log(stat)
+    return true;
+  } catch (error) {
+    console.log(error)
+    return false;
+  }
 }

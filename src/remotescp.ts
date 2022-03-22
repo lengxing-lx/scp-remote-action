@@ -1,42 +1,43 @@
 import * as core from '@actions/core'
 import * as cp from 'child_process'
 import * as context from './context'
+import * as utils from './utils'
 
 /**
  *      sshpass -p ${{ secrets.CCE_PASSWORD }}  scp  -o StrictHostKeyChecking=no  target/demoapp.jar root@182.92.156.203:/usr/local/
         sshpass -p ${{ secrets.CCE_PASSWORD }}  scp  -o StrictHostKeyChecking=no  bin/demoapp.service root@182.92.156.203:/etc/systemd/system/
  */
-export async function execRemoteSSHCommands(
+export async function execRemoteScpCommands(
   inputs: context.Inputs
 ): Promise<void> {
   for (var i = 0; i < inputs.operation_list.length; i++) {
     core.info('exec command:' + inputs.operation_list[i])
-    let sshpassCommand =
+    let scpCommand:string[] = utils.splitScpCommand(inputs.operation_list[i]);
+    if(utils.checkScpCommandStart(inputs.operation_list[i] ) && utils.checkScpCommandLength(scpCommand) && utils.checkLocalFileOrDirExist(inputs.operation_type,scpCommand)){
+      let scppassCommand:string =
       'sshpass -p ' +
       inputs.password +
-      ' ssh -o StrictHostKeyChecking=no ' +
-      inputs.username +
-      '@' +
-      inputs.ipaddr +
-      " '" +
-      inputs.operation_list[i] +
-      "'"
-    await execRemoteSSHCommand(sshpassCommand)
+      genScpCommand(scpCommand,inputs.ipaddr,inputs.operation_type,inputs.username)
+      await execRemoteSCPCommand(scppassCommand)
+    }
+
   }
 }
 
 /**
- *
- * @param sshcommand 执行远程命令
+ * 本地上传，在第二个路径前加user@ipaddr:
+ * 远端下载，在第一个路径前加user@ipaddr:
+ * 如果是目录，为scp -r
+ * 
+ * @param scpcommand 执行远程命令
  */
-export async function execRemoteSSHCommand(sshcommand: string): Promise<void> {
-  let sshpassCommandResult = await (cp.execSync(sshcommand) || '').toString()
+export async function execRemoteSCPCommand(scpcommand: string): Promise<void> {
+  let sshpassCommandResult = await (cp.execSync(scpcommand) || '').toString()
   core.info('result ' + sshpassCommandResult)
 }
 
-export function genScpCommand(scplist:string,ipaddr:string,ops_type:string,username:string) : string{
-  let scpCommand = "";
-  const fileArray:string[] = scplist.split(" ");
+export function genScpCommand(fileArray:string[],ipaddr:string,ops_type:string,username:string) : string{
+  let scpCommand = " scp -o StrictHostKeyChecking=no ";
   let scptype = fileArray[0];
   let fromPath = fileArray[1];
   let distPath = fileArray[2];
@@ -53,33 +54,5 @@ export function genScpCommand(scplist:string,ipaddr:string,ops_type:string,usern
     scpCommand +=  username + "@" + ipaddr+":" + fromPath+ " " + fromPath
   }
 
-  return "scpCommand";
-}
-
-export function genUloadComman(inputs: context.Inputs) : string{
-  for (var i = 0; i < inputs.operation_list.length; i++) {
-    core.info('exec command:' + inputs.operation_list[i])
-    let sshpassCommand =
-      'sshpass -p ' +
-      inputs.password +
-      ' ssh -o StrictHostKeyChecking=no ' + genScpCommand(inputs.operation_list[i],inputs.ipaddr,inputs.operation_type,inputs.username)
-  }
-  return "";
-}
-
-export function genDownloadComman(inputs: context.Inputs) : string{
-  for (var i = 0; i < inputs.operation_list.length; i++) {
-    core.info('exec command:' + inputs.operation_list[i])
-    let sshpassCommand =
-      'sshpass -p ' +
-      inputs.password +
-      ' ssh -o StrictHostKeyChecking=no ' +
-      inputs.username +
-      '@' +
-      inputs.ipaddr +
-      " '" +
-      inputs.operation_list[i] +
-      "'"
-  }
-  return "";
+  return scpCommand;
 }

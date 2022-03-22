@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import * as context from './context'
-import * as remotessh from './remotescp'
+import * as remotescp from './remotescp'
 import * as install from './install'
 import * as utils from './utils'
 
@@ -28,7 +28,7 @@ export async function run() {
   }
 
   //执行远程操作
-  remotessh.execRemoteSSHCommands(inputs)
+  remotescp.execRemoteScpCommands(inputs)
 }
 
 run()
