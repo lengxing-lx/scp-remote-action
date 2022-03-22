@@ -13,11 +13,16 @@ export async function execRemoteScpCommands(
   for (var i = 0; i < inputs.operation_list.length; i++) {
     core.info('exec command:' + inputs.operation_list[i])
     let scpCommand:string[] = utils.splitScpCommand(inputs.operation_list[i]);
-    if(utils.checkScpCommandStart(inputs.operation_list[i] ) && utils.checkScpCommandLength(scpCommand) && utils.checkLocalFileOrDirExist(inputs.operation_type,scpCommand)){
+    //只有在upload的情况下需要检查本地文件是否存在，如果不存在则跳过这一行
+    if(inputs.operation_type==="upload" && !utils.checkLocalFileOrDirExist(inputs.operation_type,scpCommand)){
+      continue;
+    }
+    if(utils.checkScpCommandStart(inputs.operation_list[i] ) && utils.checkScpCommandLength(scpCommand,3)){
       let scppassCommand:string =
       'sshpass -p ' +
       inputs.password +
       genScpCommand(scpCommand,inputs.ipaddr,inputs.operation_type,inputs.username)
+      core.info("sshpass scp command : " + scppassCommand)
       await execRemoteSCPCommand(scppassCommand)
     }
 

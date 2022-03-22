@@ -136,14 +136,19 @@ export function checkScpCommandStart(scpCommand:string): boolean{
  * @param scpCommand 
  * @returns 
  */
-export function checkScpCommandLength(scpCommand:string[]): boolean{
-  if(scpCommand.length === 3){
+export function checkScpCommandLength(scpCommand:string[],arrayLength:number): boolean{
+  if(scpCommand.length === arrayLength){
     return true;
   }
   return false;
 }
 
-
+/**
+ * 目前只检查本地文件，远端文件也可以检查，但需要发起远程命令，比较麻烦
+ * @param opsType 
+ * @param path 
+ * @returns 
+ */
 export function checkLocalFileOrDirExist(opsType:string,path:string[]) : boolean{
   let checkPath:string = "";
   if(opsType === "upload"){
@@ -152,13 +157,25 @@ export function checkLocalFileOrDirExist(opsType:string,path:string[]) : boolean
   if(opsType === "download"){
     checkPath = path[12];
   }
+  return checkFileOrDirStat(path[0],checkPath);
+}
+
+export function checkFileOrDirStat(fileType:string ,checkPath:string): boolean{
   core.info("check local file " + checkPath + " exist");
   try {
     const stat = fs.statSync(checkPath);
     console.log(stat)
-    return true;
+    if(fileType === "file" && stat.isFile()){
+      return true;
+    }else if(fileType === "dir" && stat.isDirectory()){
+      return true;
+    }else{
+      core.info("file Type not match " + checkPath + " is  not " + fileType);
+      return false
+    }
   } catch (error) {
     console.log(error)
     return false;
   }
 }
+

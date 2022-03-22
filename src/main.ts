@@ -13,13 +13,6 @@ export async function run() {
     return
   }
 
-  //如果发现命令中有高危操作，停止操作
-  const commandsDanger = utils.checkCommandsDanger(inputs.operation_list)
-  if (commandsDanger) {
-    core.info('dangerCommand found, terminate process')
-    return
-  }
-
   //检查当前环境是否具备远程命令操作条件
   const installSuccess = install.installSshPassOnSystem()
   if (!installSuccess) {
