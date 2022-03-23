@@ -1,5 +1,5 @@
 name: 'scp-remote-action'
-description: 'copy local archive file to remote server node by ssh chanel'
+description: 'use ssh channel,upload local file and directory to remote server ,or download file and directory from remote server'
 branding:
   color: 'red'
   icon: 'chevron-up'
@@ -8,13 +8,14 @@ inputs:
   ipaddr: 
     required: true
     description: 'the remote server node ip address'
+    default: '192.168.130.159'
   username: 
     required: true
     description: 'the remote server node login username'
     default: 'service'
   password: 
     required: true
-    description: 'the remote server node login password'
+    description: 'the remote server node login password,use github '
     default: '1234567890'
   operation_type: 
     required: true
@@ -24,8 +25,8 @@ inputs:
     required: true
     description: 'upload or download file/dir list,file表示上传或下载文件,dir表示上传或者下载目录,请仔细填写确定路径存在且正确'
     default: |
-             file ./target/test.war /usr/local/tomcat/webapps/
-             dir ./dist/* /usr/local/wwww/server/node/
+             file /root/test/target/test.war /usr/local/tomcat/webapps/
+             dir /root/testnode/dist/* /usr/local/wwww/server/node/
 runs:
   using: 'node16'
   main: 'dist/index.js'

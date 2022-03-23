@@ -101,7 +101,7 @@ export async function installSshPassOnLinux(): Promise<void> {
  * @param command
  */
 export async function installSshPassByCommand(command: string): Promise<void> {
-  core.info('current system is Ubuntu,use apt-get to install sshpass')
+  core.info('current install command is : ' + command)
   const installSshPassResult = await (cp.execSync(command) || '').toString()
   core.info(installSshPassResult)
 }

@@ -3,13 +3,15 @@ import {expect, test} from '@jest/globals'
 import * as context from '../src/context'
 
 const inputs: context.Inputs = {
-  ipaddr: '182.92.156.203',
+  ipaddr: '192.168.130.159',
   username: 'root',
   password: '********',
   operation_type: "upload",
   operation_list: ["dir Users/a/opensource/scp-remote-action /usr/local/wwww/","file /Users/a/opensource/scp-remote-action/package-lock.json /usr/local/nodesrc/"]
 }
-/**
+
+
+
 test('check inputs',()=>{
   expect(utils.checkInputs(inputs)).toEqual(true);
   for(let i = 0 ; i < inputs.operation_list.length;i++){
@@ -18,7 +20,7 @@ test('check inputs',()=>{
     expect(utils.checkScpCommandLength(fileArray,3)).toEqual(true);
   }
 })
-*/
+
 
 
 test('check ipv4', () => {

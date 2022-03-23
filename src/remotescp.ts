@@ -38,7 +38,7 @@ export async function execRemoteScpCommands(
  */
 export async function execRemoteSCPCommand(scpcommand: string): Promise<void> {
   let sshpassCommandResult = await (cp.execSync(scpcommand) || '').toString()
-  core.info('result ' + sshpassCommandResult)
+  //core.info('result ' + sshpassCommandResult)
 }
 
 export function genScpCommand(fileArray:string[],ipaddr:string,ops_type:string,username:string) : string{
@@ -56,7 +56,7 @@ export function genScpCommand(fileArray:string[],ipaddr:string,ops_type:string,u
     scpCommand += fromPath + " " + username + "@" + ipaddr+":" + distPath
   }
   if(ops_type === "download"){
-    scpCommand +=  username + "@" + ipaddr+":" + fromPath+ " " + fromPath
+    scpCommand +=  username + "@" + ipaddr+":" + fromPath+ " " + distPath
   }
 
   return scpCommand;
