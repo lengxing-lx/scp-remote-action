@@ -1283,14 +1283,8 @@ function run() {
         if (!utils.checkInputs(inputs)) {
             return;
         }
-        //如果发现命令中有高危操作，停止操作
-        const commandsDanger = utils.checkCommandsDanger(inputs.operation_list);
-        if (commandsDanger) {
-            core.info('dangerCommand found, terminate process');
-            return;
-        }
         //检查当前环境是否具备远程命令操作条件
-        const installSuccess = install.installSshPassOnSystem();
+        const installSuccess = yield install.installSshPassOnSystem();
         if (!installSuccess) {
             core.info('can not install sshpass on system');
             return;
@@ -2661,7 +2655,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getInputs = void 0;
+exports.getInputsTestDownload = exports.getInputsTestUpload = exports.getInputs = void 0;
 const core = __importStar(__webpack_require__(470));
 function getInputs() {
     return {
@@ -2673,6 +2667,26 @@ function getInputs() {
     };
 }
 exports.getInputs = getInputs;
+function getInputsTestUpload() {
+    return {
+        ipaddr: '192.168.130.159',
+        username: 'service',
+        password: '**********',
+        operation_type: "upload",
+        operation_list: ["dir /root/kube/conf /usr/local/kubeconf", "file /root/apache-maven-3.3.9-bin.tar.gz /root/"]
+    };
+}
+exports.getInputsTestUpload = getInputsTestUpload;
+function getInputsTestDownload() {
+    return {
+        ipaddr: '192.168.130.159',
+        username: 'service',
+        password: '**********',
+        operation_type: "download",
+        operation_list: ["dir /usr/local/kubeconf /usr/local/", "file /root/apache-maven-3.3.9-bin.tar.gz /usr/local"]
+    };
+}
+exports.getInputsTestDownload = getInputsTestDownload;
 
 
 /***/ }),
@@ -2805,10 +2819,15 @@ function execRemoteScpCommands(inputs) {
         for (var i = 0; i < inputs.operation_list.length; i++) {
             core.info('exec command:' + inputs.operation_list[i]);
             let scpCommand = utils.splitScpCommand(inputs.operation_list[i]);
-            if (utils.checkScpCommandStart(inputs.operation_list[i]) && utils.checkScpCommandLength(scpCommand) && utils.checkLocalFileOrDirExist(inputs.operation_type, scpCommand)) {
+            //只有在upload的情况下需要检查本地文件是否存在，如果不存在则跳过这一行
+            if (inputs.operation_type === "upload" && !utils.checkLocalFileOrDirExist(inputs.operation_type, scpCommand)) {
+                continue;
+            }
+            if (utils.checkScpCommandStart(inputs.operation_list[i]) && utils.checkScpCommandLength(scpCommand, 3)) {
                 let scppassCommand = 'sshpass -p ' +
                     inputs.password +
                     genScpCommand(scpCommand, inputs.ipaddr, inputs.operation_type, inputs.username);
+                core.info("sshpass scp command : " + scppassCommand);
                 yield execRemoteSCPCommand(scppassCommand);
             }
         }
@@ -2825,7 +2844,7 @@ exports.execRemoteScpCommands = execRemoteScpCommands;
 function execRemoteSCPCommand(scpcommand) {
     return __awaiter(this, void 0, void 0, function* () {
         let sshpassCommandResult = yield (cp.execSync(scpcommand) || '').toString();
-        core.info('result ' + sshpassCommandResult);
+        //core.info('result ' + sshpassCommandResult)
     });
 }
 exports.execRemoteSCPCommand = execRemoteSCPCommand;
@@ -2841,7 +2860,7 @@ function genScpCommand(fileArray, ipaddr, ops_type, username) {
         scpCommand += fromPath + " " + username + "@" + ipaddr + ":" + distPath;
     }
     if (ops_type === "download") {
-        scpCommand += username + "@" + ipaddr + ":" + fromPath + " " + fromPath;
+        scpCommand += username + "@" + ipaddr + ":" + fromPath + " " + distPath;
     }
     return scpCommand;
 }
@@ -4337,7 +4356,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkLocalFileOrDirExist = exports.checkScpCommandLength = exports.checkScpCommandStart = exports.splitScpCommand = exports.checkCommandDanger = exports.checkCommandsDanger = exports.checkObejectIsNull = exports.checkIPV4Addr = exports.checkInputs = void 0;
+exports.checkFileOrDirStat = exports.checkLocalFileOrDirExist = exports.checkScpCommandLength = exports.checkScpCommandStart = exports.splitScpCommand = exports.checkCommandDanger = exports.checkCommandsDanger = exports.checkObejectIsNull = exports.checkIPV4Addr = exports.checkInputs = void 0;
 const core = __importStar(__webpack_require__(470));
 const fs = __importStar(__webpack_require__(232));
 //高危命令列表，持续完善
@@ -4467,13 +4486,19 @@ exports.checkScpCommandStart = checkScpCommandStart;
  * @param scpCommand
  * @returns
  */
-function checkScpCommandLength(scpCommand) {
-    if (scpCommand.length === 3) {
+function checkScpCommandLength(scpCommand, arrayLength) {
+    if (scpCommand.length === arrayLength) {
         return true;
     }
     return false;
 }
 exports.checkScpCommandLength = checkScpCommandLength;
+/**
+ * 目前只检查本地文件，远端文件也可以检查，但需要发起远程命令，比较麻烦
+ * @param opsType
+ * @param path
+ * @returns
+ */
 function checkLocalFileOrDirExist(opsType, path) {
     let checkPath = "";
     if (opsType === "upload") {
@@ -4482,18 +4507,31 @@ function checkLocalFileOrDirExist(opsType, path) {
     if (opsType === "download") {
         checkPath = path[12];
     }
+    return checkFileOrDirStat(path[0], checkPath);
+}
+exports.checkLocalFileOrDirExist = checkLocalFileOrDirExist;
+function checkFileOrDirStat(fileType, checkPath) {
     core.info("check local file " + checkPath + " exist");
     try {
         const stat = fs.statSync(checkPath);
         console.log(stat);
-        return true;
+        if (fileType === "file" && stat.isFile()) {
+            return true;
+        }
+        else if (fileType === "dir" && stat.isDirectory()) {
+            return true;
+        }
+        else {
+            core.info("file Type not match " + checkPath + " is  not " + fileType);
+            return false;
+        }
     }
     catch (error) {
         console.log(error);
         return false;
     }
 }
-exports.checkLocalFileOrDirExist = checkLocalFileOrDirExist;
+exports.checkFileOrDirStat = checkFileOrDirStat;
 
 
 /***/ }),
@@ -4730,7 +4768,7 @@ exports.installSshPassOnLinux = installSshPassOnLinux;
  */
 function installSshPassByCommand(command) {
     return __awaiter(this, void 0, void 0, function* () {
-        core.info('current system is Ubuntu,use apt-get to install sshpass');
+        core.info('current install command is : ' + command);
         const installSshPassResult = yield (cp.execSync(command) || '').toString();
         core.info(installSshPassResult);
     });
